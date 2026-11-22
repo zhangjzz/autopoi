@@ -60,6 +60,15 @@ public @interface Excel {
 	 */
 	public int imageType() default 3;
 
+	//update-begin-author:z date:20230419 for:导出图片按注解给定百分比缩放
+	/**
+	 * 导出图片缩放百分比，值范围：大于0的整数，小于100是缩小，大于100是放大，0表示不缩放（使用默认逻辑）
+	 *
+	 * @return
+	 */
+	public int imageZoomPercent() default 0;
+	//update-end-author:z date:20230419 for:导出图片按注解给定百分比缩放
+
 	/**
 	 * 导入的时间格式,以这个是否为空来判断是否需要格式化日期
 	 */

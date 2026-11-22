@@ -17,6 +17,7 @@ package org.jeecgframework.poi.excel.export.base;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
+import org.apache.poi.ddf.EscherClientAnchorRecord;
 import org.apache.poi.hssf.usermodel.HSSFClientAnchor;
 import org.apache.poi.hssf.usermodel.HSSFRichTextString;
 import org.apache.poi.ss.usermodel.*;
@@ -41,9 +42,11 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.SecureRandom;
@@ -298,7 +301,27 @@ public abstract class ExcelExportBase extends ExportBase {
 		}
 		for (int imageIndex = 0; imageIndex < imageDataList.size(); imageIndex++) {
 			byte[] value = imageDataList.get(imageIndex);
-			ClientAnchor anchor = createImageAnchor(row, i, imageIndex, imageDataList.size());
+			ClientAnchor anchor;
+			//update-begin-author:z date:20240822 for:获取图片宽高，按比例缩放（自 master 分支移植的特性）
+			if (imageDataList.size() == 1) {
+				// 单图：读取图片宽高，等比调整列宽行高（自 master 分支移植）；
+				// 锚点=同格 + 四周 1px 内缩（用户要求图片与格边留 1px 空隙）。
+				// 注意 HSSF dx/dy 单位是 1/1024 列宽、1/256 行高且 POI 强制 0..1023/0..255（负偏移不可用），
+				// 1px 需按实际像素换算成格内比例；跨格契约(col2=col1+1)与四周内缩互斥，fork 采用同格内缩语义
+				BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(value));
+				int imgHeight = bufferedImage == null ? 0 : bufferedImage.getHeight();
+				int imgWidth = bufferedImage == null ? 0 : bufferedImage.getWidth();
+				if (imgWidth > 0 && imgHeight > 0) {
+					imgHeight = (int) Math.round((imgHeight * (30 * 13) * 1.0 / imgWidth));
+					row.getSheet().setColumnWidth(i, 30 * 256);
+					row.setHeight((short) (imgHeight / 2 * 18));
+				}
+				anchor = createOneCellInsetAnchor(row, i);
+			} else {
+				// 多图保持官方原有等分锚点逻辑
+				anchor = createImageAnchor(row, i, imageIndex, imageDataList.size());
+			}
+			//update-end-author:z date:20240822 for:获取图片宽高，按比例缩放（自 master 分支移植的特性）
 			patriarch.createPicture(anchor, row.getSheet().getWorkbook().addPicture(value, getImageType(value)));
 		}
 		//update-end---author:scott ---date:20260813  for：【issues/9605】图片字段支持在同一单元格导出多张图片------------
@@ -394,6 +417,44 @@ public abstract class ExcelExportBase extends ExportBase {
 		int startX = cellWidth * imageIndex / imageCount;
 		int endX = cellWidth * (imageIndex + 1) / imageCount;
 		return new XSSFClientAnchor(startX, 0, endX, cellHeight, columnIndex, row.getRowNum(), columnIndex, row.getRowNum());
+	}
+
+	/**
+	 * 单图"恰好位于一个单元格内 + 四周 1px 内缩"锚点。
+	 * 实现为跨格锚点（col2=col1+1，官方契约）+ to 点负偏移拉回格内 1px：
+	 * 不能用同格锚点（col1==col2）——部分渲染器（腾讯文档预览等）会把同格 dx/dy
+	 * 按默认列宽/行高解释，导致图片被压缩到单元格左侧、右侧出现大空隙。
+	 * HSSF 的 dx/dy 是格内相对单位（1/1024 列宽、1/256 行高）且 POI setter 强制 0..1023/0..255，
+	 * 负偏移需绕过校验直接写 EscherClientAnchorRecord（二进制为有符号 short，Excel 支持负偏移，
+	 * 不支持的渲染器会 clamp 为 0 退化为满格，视觉可接受）。
+	 * 1px 按实际像素换算；XSSF 用 EMU（1px=9525），OOXML colOff/rowOff 本身允许负值。
+	 *
+	 * @author z
+	 * @since 2026-11-22 用户要求导出图片与单元格四边各留 1px
+	 */
+	private ClientAnchor createOneCellInsetAnchor(Row row, int columnIndex) {
+		if (type.equals(ExcelType.HSSF)) {
+			double colWpx = row.getSheet().getColumnWidthInPixels(columnIndex);
+			double rowHpx = row.getHeightInPoints() * 4.0 / 3.0;
+			int dx = Math.max(1, (int) Math.ceil(1024.0 / colWpx));
+			int dy = Math.max(2, (int) Math.ceil(256.0 / rowHpx) + 1);
+			HSSFClientAnchor anchor = new HSSFClientAnchor(dx, dy, 0, 0,
+					(short) columnIndex, row.getRowNum(), (short) (columnIndex + 1), row.getRowNum() + 1);
+			try {
+				Field f = HSSFClientAnchor.class.getDeclaredField("_escherClientAnchor");
+				f.setAccessible(true);
+				EscherClientAnchorRecord record = (EscherClientAnchorRecord) f.get(anchor);
+				record.setDx2((short) -dx);
+				record.setDy2((short) -dy);
+			} catch (Exception e) {
+				// ponytail: 反射失败时 dx2/dy2 保持 0，退化为官方满格跨格锚点（v3 观感）
+				LOGGER.warn("set negative anchor offset failed, fallback to full-cell anchor: " + e.getMessage());
+			}
+			return anchor;
+		}
+		int inset = Units.EMU_PER_PIXEL;
+		return new XSSFClientAnchor(inset, inset, -inset, -inset,
+				columnIndex, row.getRowNum(), columnIndex + 1, row.getRowNum() + 1);
 	}
 
 	/**

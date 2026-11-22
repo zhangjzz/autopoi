@@ -40,6 +40,13 @@ public class ExcelExportEntity extends ExcelBaseEntity implements Comparable<Exc
 	 */
 	private int exportImageType = 3;
 
+	//update-begin-author:z date:20230419 for:导出图片按注解给定百分比缩放
+	/**
+	 * 图片缩放百分比，大于0时生效，小于100缩小，大于100放大，0表示不缩放
+	 */
+	private int exportImageZoomPercent = 0;
+	//update-end-author:z date:20230419 for:导出图片按注解给定百分比缩放
+
 	/**
 	 * 图片储存位置(磁盘目录) 用于导出获取图片绝对路径
 	 */
@@ -156,6 +163,12 @@ public class ExcelExportEntity extends ExcelBaseEntity implements Comparable<Exc
 		return exportImageType;
 	}
 
+	//update-begin-author:z date:20230419 for:导出图片按注解给定百分比缩放
+	public int getExportImageZoomPercent() {
+		return exportImageZoomPercent;
+	}
+	//update-end-author:z date:20230419 for:导出图片按注解给定百分比缩放
+
 	public double getHeight() {
 		return height;
 	}
@@ -195,6 +208,12 @@ public class ExcelExportEntity extends ExcelBaseEntity implements Comparable<Exc
 	public void setExportImageType(int exportImageType) {
 		this.exportImageType = exportImageType;
 	}
+
+	//update-begin-author:z date:20230419 for:导出图片按注解给定百分比缩放
+	public void setExportImageZoomPercent(int exportImageZoomPercent) {
+		this.exportImageZoomPercent = exportImageZoomPercent;
+	}
+	//update-end-author:z date:20230419 for:导出图片按注解给定百分比缩放
 
 	public void setHeight(double height) {
 		this.height = height;

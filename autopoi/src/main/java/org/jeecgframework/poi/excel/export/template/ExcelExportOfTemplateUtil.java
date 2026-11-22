@@ -177,18 +177,12 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 			// 创建表格样式
 			setExcelExportStyler((IExcelExportStyler) teplateParams.getStyle().getConstructor(Workbook.class).newInstance(wb));
 			// step 3. 解析模板
+			//update-begin-author:z date:20241021 for:解析模板延迟到数据填充之后（自 master 分支移植：解决图片在数据下方时，图片位置不正确的问题）
 			//update-begin---author:chenrui ---date:20240801  for：[issues/6925]xlsx模版导出图片------------
 			if (wb instanceof XSSFWorkbook) {
 				super.type = ExcelType.XSSF;
 			}
 			//update-end---author:chenrui ---date:20240801  for：[issues/6925]xlsx模版导出图片------------
-			for (int i = 0, le = params.isScanAllsheet() ? wb.getNumberOfSheets() : params.getSheetNum().length; i < le; i++) {
-				if (params.getSheetName() != null && params.getSheetName().length > i && StringUtils.isNotEmpty(params.getSheetName()[i])) {
-					wb.setSheetName(i, params.getSheetName()[i]);
-				}
-				tempCreateCellSet.clear();
-				parseTemplate(wb.getSheetAt(i), map, params.isColForEach());
-			}
 			if (dataSet != null) {
 				// step 4. 正常的数据填充
 				dataHanlder = params.getDataHanlder();
@@ -197,6 +191,15 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 				}
 				addDataToSheet(pojoClass, dataSet, wb.getSheetAt(params.getDataSheetNum()), wb);
 			}
+			// step 5. 解析模板（延迟执行，此时数据行高/位置已确定，图片锚点位置正确）
+			for (int i = 0, le = params.isScanAllsheet() ? wb.getNumberOfSheets() : params.getSheetNum().length; i < le; i++) {
+				if (params.getSheetName() != null && params.getSheetName().length > i && StringUtils.isNotEmpty(params.getSheetName()[i])) {
+					wb.setSheetName(i, params.getSheetName()[i]);
+				}
+				tempCreateCellSet.clear();
+				parseTemplate(wb.getSheetAt(i), map, params.isColForEach());
+			}
+			//update-end-author:z date:20241021 for:解析模板延迟到数据填充之后（自 master 分支移植：解决图片在数据下方时，图片位置不正确的问题）
 		} catch (Exception e) {
 			LOGGER.error(e.getMessage(), e);
 			return null;
@@ -288,6 +291,9 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 			for (int i = row.getFirstCellNum(); i < row.getLastCellNum(); i++) {
 				cell = row.getCell(i);
 				if (row.getCell(i) != null && (cell.getCellType() == CellType.STRING || cell.getCellType() == CellType.NUMERIC)) {
+					//update-begin-author:z date:20241022 for:记录原单元格类型，数值单元格转字符串后需还原（修复数值导出变为字符串格式问题）
+					CellType hisCellTypeEnum = cell.getCellType();
+					//update-end-author:z date:20241022 for:记录原单元格类型，数值单元格转字符串后需还原（修复数值导出变为字符串格式问题）
 					cell.setCellType(CellType.STRING);
 					String text = cell.getStringCellValue();
 					if (text.contains(IF_DELETE)) {
@@ -296,10 +302,14 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 							PoiSheetUtility.deleteColumn(sheet, i);
 							// 这一列已被删除，不能再操作原来的单元格；后面的列已左移到当前位置，下一轮循环要重新处理当前位置
 							i--;
+							//update-end---author:lvdandan ---date:20261020  for：[issues/174]!if删除列后再操作已被删除的单元格，XSSF抛XmlValueDisconnectedException；删除后后面的列左移到当前位置，需要重新处理------------
 						} else {
 							cell.setCellValue("");
-							//update-end---author:lvdandan ---date:20261020  for：[issues/174]!if删除列后再操作已被删除的单元格，XSSF抛XmlValueDisconnectedException；删除后后面的列左移到当前位置，需要重新处理------------
 						}
+					} else if (hisCellTypeEnum == CellType.NUMERIC && canConvertToNumber(cell.getStringCellValue())) {
+						//update-begin-author:z date:20241022 for:数值单元格还原为数值类型（修复数值导出变为字符串格式问题）
+						cell.setCellValue(Double.parseDouble(cell.getStringCellValue()));
+						//update-end-author:z date:20241022 for:数值单元格还原为数值类型（修复数值导出变为字符串格式问题）
 					}
 				}
 			}
@@ -369,12 +379,32 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 			} else {
 				cell.setCellValue(oldString);
 			}
+		} else if (cellType == CellType.NUMERIC && canConvertToNumber(cell.getStringCellValue())) {
+			//update-begin-author:z date:20241022 for:原数值单元格还原为数值类型（修复数值导出变为字符串格式问题）
+			cell.setCellValue(Double.parseDouble(cell.getStringCellValue()));
+			//update-end-author:z date:20241022 for:原数值单元格还原为数值类型（修复数值导出变为字符串格式问题）
 		}
 		// 判断foreach 这种方法
 		if (oldString != null && oldString.contains(FOREACH)) {
 			addListDataToExcel(cell, map, oldString.trim());
 		}
 
+	}
+
+	/**
+	 * 判断字符串是否可以转换为数值
+	 * （自 master 分支移植：修复数值导出变为字符串格式问题）
+	 *
+	 * @param a
+	 * @return
+	 */
+	public boolean canConvertToNumber(String a) {
+		try {
+			Double.parseDouble(a);
+			return true;
+		} catch (NumberFormatException e) {
+			return false;
+		}
 	}
 
 	private boolean isNumber(String text) {
@@ -698,6 +728,13 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 					createImageCell(row.getCell(ci), img.getHeight(), img.getRowspan(), img.getColspan(), img.getUrl(), img.getData(), img.getScaleModeEnum());
 				} else if (isNumber && StringUtils.isNotEmpty(val)) {
 					row.getCell(ci).setCellValue(Double.parseDouble(val));
+				} else if (obj != null && val.contains(FOREACH_COL_CHILD)) {
+					//update-begin-author:z date:20240823 for:增加子列表循环列支持（自 master 分支移植）
+					String name = val.replace(FOREACH_COL_CHILD, EMPTY).replace(START_STR, EMPTY);
+					int[] loopColumnResult = setForEachLoopColumnCellValue(row, ci, t, columns, params, map, rowspan, colspan, mergedRegionHelper, name, i);
+					ci = loopColumnResult[0];
+					i = loopColumnResult[1];
+					//update-end-author:z date:20240823 for:增加子列表循环列支持（自 master 分支移植）
 				} else {
 					try {
 						row.getCell(ci).setCellValue(val);
@@ -908,6 +945,88 @@ public final class ExcelExportOfTemplateUtil extends ExcelExportBase {
 		}
 		return new int[]{nums, temp.size(), ci};
 	}
+
+	/**
+	 * c_fe 子列表循环列（自 master 分支移植，2024-08-23 增加子列表循环列支持）
+	 * 在 $fe 行循环的列中，对当前行对象的子集合按列展开
+	 *
+	 * @param row
+	 * @param columnIndex
+	 * @param t
+	 * @param columns
+	 * @param params
+	 * @param map
+	 * @param rowspan
+	 * @param colspan
+	 * @param mergedRegionHelper
+	 * @param name
+	 * @param i
+	 * @return [列索引, 列参数索引]
+	 * @throws Exception
+	 */
+	private int[] setForEachLoopColumnCellValue(Row row, int columnIndex, Object t, List<ExcelForEachParams> columns,
+												ExcelForEachParams params, Map<String, Object> map,
+												int rowspan, int colspan,
+												MergedRegionHelper mergedRegionHelper, String name, int i) throws Exception {
+		String[] keys  = name.replaceAll("\\s+", " ").trim().replace(teplateParams.getTempParams() + ".", EMPTY).split(" ");
+		Collection<?> datas = (Collection<?>) PoiPublicUtil.getParamsValue(keys[0], t);
+		Iterator<?> iterator = datas.iterator();
+		List<String> loopColumns = new ArrayList<>();
+		if (iterator.hasNext()) {
+			Object childData = iterator.next();
+			map.put(keys[1], childData);
+			String tempStr = keys[2];
+			while (params.getName().contains(keys[1] + ".")) {
+				loopColumns.add(tempStr);
+				Object childVal = eval(tempStr, map);
+				if (childVal instanceof ImageEntity) {
+					ImageEntity img = (ImageEntity) childVal;
+					row.getCell(columnIndex).setCellValue("");
+					if (img.getRowspan() > 1 || img.getColspan() > 1) {
+						img.setHeight(0);
+						row.getCell(columnIndex).getSheet().addMergedRegion(new CellRangeAddress(row.getCell(columnIndex).getRowIndex(),
+								row.getCell(columnIndex).getRowIndex() + img.getRowspan() - 1, row.getCell(columnIndex).getColumnIndex(), row.getCell(columnIndex).getColumnIndex() + img.getColspan() - 1));
+					}
+					createImageCell(row.getCell(columnIndex), img.getHeight(), img.getRowspan(), img.getColspan(), img.getUrl(), img.getData());
+				} else {
+					row.getCell(columnIndex).setCellValue(childVal == null ? "" : childVal.toString());
+				}
+				columnIndex = columnIndex + params.getColspan();
+				row.createCell(columnIndex);
+				i++;
+				if (columns.size() > columnIndex) {
+					params = columns.get(columnIndex);
+					tempStr = params.getName();
+				} else {
+					break;
+				}
+			}
+		}
+		while (iterator.hasNext()) {
+			Object childData = iterator.next();
+			map.put(keys[1], childData);
+			for (String loopColumn : loopColumns) {
+				Object childVal = eval(loopColumn, map);
+				if (childVal instanceof ImageEntity) {
+					ImageEntity img = (ImageEntity) childVal;
+					row.getCell(columnIndex).setCellValue("");
+					if (img.getRowspan() > 1 || img.getColspan() > 1) {
+						img.setHeight(0);
+						row.getCell(columnIndex).getSheet().addMergedRegion(new CellRangeAddress(row.getCell(columnIndex).getRowIndex(),
+								row.getCell(columnIndex).getRowIndex() + img.getRowspan() - 1, row.getCell(columnIndex).getColumnIndex(), row.getCell(columnIndex).getColumnIndex() + img.getColspan() - 1));
+					}
+					createImageCell(row.getCell(columnIndex), img.getHeight(), img.getRowspan(), img.getColspan(), img.getUrl(), img.getData());
+				} else {
+					row.getCell(columnIndex).setCellValue(childVal == null ? "" : childVal.toString());
+				}
+				row.createCell(++columnIndex);
+				i++;
+			}
+		}
+		return new int[]{columnIndex, i};
+
+	}
+
 	/**
 	 * 创建并返回第一个Row
 	 *

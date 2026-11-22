@@ -34,6 +34,9 @@ public final class PoiElUtil {
 	public static final String FOREACH_AND_SHIFT = "$fe:";
 	public static final String FOREACH_COL        = "#fe:";
 	public static final String FOREACH_COL_VALUE  = "v_fe:";
+	//update-begin-author:z date:20240823 for:子列表循环列
+	public static final String FOREACH_COL_CHILD  = "c_fe:";
+	//update-end-author:z date:20240823 for:子列表循环列
 	public static final String START_STR = "{{";
 	public static final String END_STR = "}}";
 	public static final String WRAP               = "]]";

@@ -325,6 +325,9 @@ public class ExportBase {
 		excelEntity.setOrderNum(getCellOrder(excel.orderNum(), targetId));
 		excelEntity.setWrap(excel.isWrap());
 		excelEntity.setExportImageType(excel.imageType());
+		//update-begin-author:z date:20230419 for:导出图片按注解给定百分比缩放
+		excelEntity.setExportImageZoomPercent(excel.imageZoomPercent());
+		//update-end-author:z date:20230419 for:导出图片按注解给定百分比缩放
 		excelEntity.setSuffix(excel.suffix());
 		excelEntity.setDatabaseFormat(excel.databaseFormat());
 		excelEntity.setFormat(StringUtils.isNotEmpty(excel.exportFormat()) ? excel.exportFormat() : excel.format());
@@ -700,6 +703,9 @@ public class ExportBase {
 		target.setWidth(source.getWidth());
 		target.setHeight(source.getHeight());
 		target.setExportImageType(source.getExportImageType());
+		//update-begin-author:z date:20230419 for:导出图片按注解给定百分比缩放
+		target.setExportImageZoomPercent(source.getExportImageZoomPercent());
+		//update-end-author:z date:20230419 for:导出图片按注解给定百分比缩放
 		target.setImageBasePath(source.getImageBasePath());
 		target.setOrderNum(source.getOrderNum());
 		target.setWrap(source.isWrap());
