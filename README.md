@@ -5,7 +5,9 @@ AutoPOI (Excel和 Word简易工具类)
 ===========================
  AutoPOI 功能如同名字auto，追求的就是自动化，让一个没接触过poi的人员，可以傻瓜化的快速实现Excel导入导出、Word模板导出、可以仅仅5行代码就可以完成Excel的导入导出。
  
- 当前最新版本： 2.0.5（发布日期：2026-07-09）
+ 当前最新版本： 2.1.0（发布日期：2026-11-22）
+
+> **关于本仓库与 [jeecg/autopoi](https://github.com/jeecg/autopoi) 的关系**：本仓库与 jeecg 官方**没有任何隶属或合作关系**，仅基于其 2.0.8 版本源码做了修改与增强（新增/修改内容见下文 [本仓库新增/修改的功能](#本仓库新增修改的功能)），Maven 坐标已迁移至 `io.github.zhangjzz`。如需官方版本请前往官方仓库获取。
  
 ---------------------------
 AutoPOI的主要特点
@@ -47,27 +49,27 @@ Maven 依赖配置
 **Spring Boot 2.x 项目：**
 ```xml
 <dependency>
- <groupId>org.jeecgframework</groupId>
+ <groupId>io.github.zhangjzz</groupId>
  <artifactId>autopoi-spring-boot-2-starter</artifactId>
- <version>2.0.5</version>
+ <version>2.1.0</version>
 </dependency>
 ```
 
 **Spring Boot 3.x 项目：**
 ```xml
 <dependency>
- <groupId>org.jeecgframework</groupId>
+ <groupId>io.github.zhangjzz</groupId>
  <artifactId>autopoi-spring-boot-3-starter</artifactId>
- <version>2.0.5</version>
+ <version>2.1.0</version>
 </dependency>
 ```
 
 **纯 Java 项目（无 Spring）：**
 ```xml
 <dependency>
- <groupId>org.jeecgframework</groupId>
+ <groupId>io.github.zhangjzz</groupId>
  <artifactId>autopoi</artifactId>
- <version>2.0.5</version>
+ <version>2.1.0</version>
 </dependency>
 ```
 
@@ -83,8 +85,24 @@ AutoPoi 模板 表达式支持
 - fe: 遍历数据,创建row
 - !fe: 遍历数据不创建row 
 - $fe: 下移插入,把当前行,下面的行全部下移.size()行,然后插入
+- c_fe: 子列表循环列,在 $fe 行循环的列中,对当前行对象的子集合按列循环展开（本仓库新增）
 - !if: 删除当前列 {{!if:(test)}}
 - 单引号表示常量值 ''  比如'1' 那么输出的就是 1
+
+
+---------------------------
+本仓库新增/修改的功能
+--------------------------
+
+以下为相对 jeecg/autopoi 官方 2.0.8 新增或修改的内容（均在官方功能基础上叠加，不改变原有用法）：
+
+1. **列表导出单图按比例缩放并居中**：单图导出时自动读取图片宽高，等比调整列宽与行高，图片恰好位于一个单元格内、与四边各留约 1px 空隙；多图（逗号分隔路径）保持官方等分逻辑。配合 2026-10 官方 issues/9605 多图导出导入契约（单图锚点跨格），负向 to 偏移直接写入 Escher 记录实现。
+2. **模板导出解析延迟到数据填充之后**：修复图片位于数据下方时，模板解析过早导致图片锚点位置不正确的问题（step5 二次解析方案）。
+3. **模板导出数值格式修复**：模板数值单元格被占位符替换转为字符串后，自动还原为数值类型（`canConvertToNumber`），避免导出后数字变文本、无法参与求和。
+4. **子列表循环列 `c_fe:`**：在 `$fe:` 行循环的列中，对当前行对象的子集合按列循环展开（含循环列内图片支持），用于一行内子集合不定数量的横向展开场景。
+5. **模板导出图片（ImageEntity）**：官方 2.0.8 已内置（issues/9741），单值 `{{}}` 与 foreach 行均支持 http/https/本地/二进制图片，本仓库直接继承。
+6. **`@Excel` 注解新增 `imageZoomPercent` 字段**：图片缩放百分比（>0 生效），当前实际缩放策略以上述第 1 条的固定等比缩放为准，该字段为预留扩展。
+7. **Excel 导入图片保存路径**：导入图片字段支持 `@Excel(saveUrl=...)` 指定保存子目录（`ImportFileServiceI` 新增双参 `doUpload(byte[] data, String saveUrl)`，实现类需同步实现）。
 
 
 ---------------------------

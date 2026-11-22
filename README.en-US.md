@@ -5,7 +5,9 @@ AutoPOI (Excel and Word Easy Utility)
 ===========================
 AutoPOI, as its name suggests "auto", pursues automation. It enables anyone without POI experience to quickly implement Excel import/export and Word template export in a foolproof manner. You can complete Excel import/export with just 5 lines of code.
 
-Current Version: 2.0.5 (Released: 2026-07-09)
+Current Version: 2.1.0 (Released: 2026-11-22)
+
+> **Relationship with [jeecg/autopoi](https://github.com/jeecg/autopoi)**: This repository is NOT affiliated with the official jeecg project in any way. It is a fork based on the official 2.0.8 source code with modifications and enhancements (see [Features added/modified in this repository](#features-addedmodified-in-this-repository)). Maven coordinates have been migrated to `io.github.zhangjzz`. For the official version, please visit the official repository.
 
 ---------------------------
 Key Features of AutoPOI
@@ -47,27 +49,27 @@ Maven Dependencies
 **For Spring Boot 2.x projects:**
 ```xml
 <dependency>
- <groupId>org.jeecgframework</groupId>
+ <groupId>io.github.zhangjzz</groupId>
  <artifactId>autopoi-spring-boot-2-starter</artifactId>
- <version>2.0.5</version>
+ <version>2.1.0</version>
 </dependency>
 ```
 
 **For Spring Boot 3.x projects:**
 ```xml
 <dependency>
- <groupId>org.jeecgframework</groupId>
+ <groupId>io.github.zhangjzz</groupId>
  <artifactId>autopoi-spring-boot-3-starter</artifactId>
- <version>2.0.5</version>
+ <version>2.1.0</version>
 </dependency>
 ```
 
 **For pure Java projects (without Spring):**
 ```xml
 <dependency>
- <groupId>org.jeecgframework</groupId>
+ <groupId>io.github.zhangjzz</groupId>
  <artifactId>autopoi</artifactId>
- <version>2.0.5</version>
+ <version>2.1.0</version>
 </dependency>
 ```
 
@@ -83,8 +85,24 @@ Template Expression Support
 - fe: Iterate data, create row
 - !fe: Iterate data without creating row
 - $fe: Insert by moving down, move current and below rows down by .size() rows, then insert
+- c_fe: Child-list loop column — inside a `$fe:` row loop, expands the current row object's child collection horizontally by column (added in this repository)
 - !if: Delete current column {{!if:(test)}}
 - Single quotes for constant values '', e.g., '1' outputs 1
+
+
+---------------------------
+Features added/modified in this repository
+--------------------------
+
+The following changes are added or modified on top of the official jeecg/autopoi 2.0.8 (layered on official behavior, no change to existing usage):
+
+1. **Proportional scaling & centering for single-image list export**: automatically reads image dimensions, adjusts column width and row height proportionally; the image fits exactly within one cell with ~1px margin on all four sides. Multi-image (comma-separated paths) keeps the official equal-split logic, and stays compatible with the official multi-image contract (issues/9605, single-image anchor spans one cell) via negative "to" offsets written directly into the Escher record.
+2. **Deferred template parsing (after data fill)**: fixes incorrect image anchor positions when images are located below the data rows (step-5 re-parse approach).
+3. **Numeric format fix for template export**: template numeric cells that were converted to strings by placeholder replacement are automatically restored to numeric type (`canConvertToNumber`), so exported numbers no longer become text and can participate in SUM.
+4. **Child-list loop column `c_fe:`**: inside a `$fe:` row loop, expands the current row object's child collection horizontally by column (with in-column image support), for scenarios where a row contains an variable-length child collection spread across columns.
+5. **Template export images (ImageEntity)**: already built into official 2.0.8 (issues/9741) — single `{{}}` placeholders and foreach rows support http/https/local/binary images; inherited as-is.
+6. **New `imageZoomPercent` field on the `@Excel` annotation**: image scaling percentage (>0 to take effect). The current actual scaling strategy is the fixed proportional scaling described in item 1; this field is reserved for future extension.
+7. **Excel import image save path**: import image fields support `@Excel(saveUrl=...)` to specify a save sub-directory (`ImportFileServiceI` adds the two-arg `doUpload(byte[] data, String saveUrl)`; implementation classes must implement it as well).
 
 
 ---------------------------
