@@ -15,7 +15,7 @@
  */
 package org.jeecgframework.poi.excel.view;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.web.servlet.view.AbstractView;
 

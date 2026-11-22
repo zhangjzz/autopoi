@@ -1,48 +1,54 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.jeecgframework</groupId>
+	<groupId>io.github.zhangjzz</groupId>
 	<artifactId>autopoi-parent</artifactId>
 
-	<version>1.4.6</version>
+	<version>2.0</version>
 	<packaging>pom</packaging>
 
 	<name>autopoi-parent</name>
-	<url>http://www.jeecg.com</url>
-	
+	<url>https://github.com/zhangjzz/autopoi</url>
+
 	<modules>
 		<module>autopoi</module>
 		<module>autopoi-web</module>
 	</modules>
 
-	<description> office 工具类 基于 poi</description>
+	<description>office 工具类基于 poi，fork 自 org.jeecgframework:autopoi 并做 Jakarta EE / Spring 6 适配</description>
 	<licenses>
 		<license>
 			<name>The Apache License, Version 2.0</name>
 			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
 		</license>
 	</licenses>
-	
-	<scm>  
-      <connection>scm:git:https://github.com/zhangdaiscott/autopoi.git</connection>
-      <developerConnection>scm:git:https://github.com/zhangdaiscott/autopoi.git</developerConnection>  
-      <url>https://github.com/zhangdaiscott/autopoi</url>  
+
+	<scm>
+      <connection>scm:git:https://github.com/zhangjzz/autopoi.git</connection>
+      <developerConnection>scm:git:https://github.com/zhangjzz/autopoi.git</developerConnection>
+      <url>https://github.com/zhangjzz/autopoi</url>
 	</scm>
 	<developers>
         <developer>
+            <name>zhangjzz</name>
+            <url>https://github.com/zhangjzz</url>
+        </developer>
+        <developer>
             <name>jeecg</name>
             <email>jeecgos@163.com</email>
+            <organization>jeecg</organization>
+            <organizationUrl>http://www.jeecg.com</organizationUrl>
         </developer>
     </developers>
 
 	<properties>
-		<autopoi.version>1.4.6</autopoi.version>
+		<autopoi.version>2.0</autopoi.version>
 		<poi.version>4.1.2</poi.version>
 		<xerces.version>2.9.1</xerces.version>
 		<guava.version>29.0-jre</guava.version>
 		<commons-lang.version>3.10</commons-lang.version>
 		<slf4j.version>1.7.30</slf4j.version>
-		<spring.version>5.1.0.RELEASE</spring.version>
+		<spring.version>6.2.19</spring.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -118,16 +124,16 @@
 		    </dependency>
 			<!--servlet -->
 			<dependency>
-				<groupId>javax.servlet</groupId>
-				<artifactId>servlet-api</artifactId>
-				<version>2.5</version>
+				<groupId>jakarta.servlet</groupId>
+				<artifactId>jakarta.servlet-api</artifactId>
+				<version>6.1.0</version>
 				<scope>provided</scope>
 				<optional>true</optional>
 			</dependency>
 			
 			<!-- 模块版本 -->
 			<dependency>
-				<groupId>org.jeecgframework</groupId>
+				<groupId>io.github.zhangjzz</groupId>
 				<artifactId>autopoi</artifactId>
 				<version>${autopoi.version}</version>
 			</dependency>
@@ -142,8 +148,8 @@
 					<plugin>
 						<artifactId>maven-compiler-plugin</artifactId>
 						<configuration>
-							<source>1.8</source>
-							<target>1.8</target>
+							<source>17</source>
+							<target>17</target>
 							<encoding>UTF-8</encoding>
 						</configuration>
 					</plugin>
@@ -151,7 +157,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>2.2.1</version>
+						<version>3.3.1</version>
 						<executions>
 							<execution>
 								<phase>package</phase>
@@ -183,8 +189,8 @@
 					<plugin>
 						<artifactId>maven-compiler-plugin</artifactId>
 						<configuration>
-							<source>1.8</source>
-							<target>1.8</target>
+							<source>17</source>
+							<target>17</target>
 							<encoding>UTF-8</encoding>
 						</configuration>
 					</plugin>
@@ -192,7 +198,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>2.2.1</version>
+						<version>3.3.1</version>
 						<executions>
 							<execution>
 								<phase>package</phase>
@@ -206,7 +212,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.9.1</version>
+						<version>3.10.1</version>
 						<executions>
 							<execution>
 								<phase>package</phase>
@@ -215,7 +221,8 @@
 								</goals>
 								<configuration>
 									<encoding>UTF-8</encoding>
-									<additionalparam>-Xdoclint:none</additionalparam>
+									<doclint>none</doclint>
+									<failOnError>false</failOnError>
 								</configuration>
 							</execution>
 						</executions>
@@ -224,7 +231,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.6</version>
+						<version>3.2.7</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -235,30 +242,20 @@
 							</execution>
 						</executions>
 					</plugin>
-					<!--Nexus Staging Maven插件是将组件部署到OSS并将其发布到Central Repository的推荐方法-->
+					<!--Central Portal 发布插件：上传并自动发布到 Maven Central-->
 					<plugin>
-						<groupId>org.sonatype.plugins</groupId>
-						<artifactId>nexus-staging-maven-plugin</artifactId>
-						<version>1.6.7</version>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>0.6.0</version>
 						<extensions>true</extensions>
 						<configuration>
-							<serverId>oss</serverId>
-							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-							<autoReleaseAfterClose>true</autoReleaseAfterClose>
+							<publishingServerId>central</publishingServerId>
+							<autoPublish>true</autoPublish>
+							<waitUntil>published</waitUntil>
 						</configuration>
 					</plugin>
 				</plugins>
 			</build>
-			<distributionManagement>
-				<snapshotRepository>
-					<id>oss</id>
-					<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-				</snapshotRepository>
-				<repository>
-					<id>oss</id>
-					<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-				</repository>
-			</distributionManagement>
 		</profile>
 	</profiles>
 
@@ -268,8 +265,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<source>17</source>
+					<target>17</target>
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
